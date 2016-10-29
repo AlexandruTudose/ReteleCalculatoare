@@ -7,14 +7,20 @@
 #define CREDENTIALS "credentials.json"
 #define MAX_ATTEMPTS 3
 
-#define INTRO "\n     WELCOME!\n In order to continue you have to authenticate.\n"
-#define I_U_R " Please enter a username. The default is \"admin\".\n>"
-#define I_P_R " Please enter the password. The default is \"admin\".\n>"
-#define I_ACC "\n Nice to see you %s."
-#define I_ERR "\n Authentication failed."
-#define I_E_T "To many failed attempts."
-#define EXIT  "\n Press \"%s\" to Exit."
-#define ENTER "Enter"
+#define INTRO   "\n     WELCOME!\n In order to continue you have to authenticate.\n"
+#define I_U_R   " Please enter a username. The default is \"admin\".\n>"
+#define I_P_R   " Please enter the password. The default is \"admin\".\n>"
+#define I_ACC   "\n Nice to see you %s."
+#define I_ERR   "\n Authentication failed."
+#define I_E_T   "To many failed attempts."
+#define I_EXIT  "\n Press \"%s\" to Exit."
+#define EXIT    "exit"
+#define ENTER   "Enter"
+#define MENU_1  "\n This the main menu. You can choose from the fallowing options,"
+#define MENU_2  "\nby writing the right command. Warning: \"myfind\" and \"mystat\""
+#define MENU_3  "\nalso require arguments. Type \"help myfind\" or \"help mystat\" for"
+#define MENU_4  "\nmore datails.\n1. myfind\n2. mystat\n3. exit"
+#define REQUEST "\n> "
 
 
 char *readCredentials(){
@@ -77,7 +83,7 @@ void authenticate(){
     }
     if(count == MAX_ATTEMPTS){
         printf("%s", I_E_T);
-        printf(EXIT, ENTER);
+        printf(I_EXIT, ENTER);
         readFromStdin();
 
         //should exit from a son.
@@ -85,8 +91,29 @@ void authenticate(){
     }
 }
 
+void interpret(char *command){
+    /*Recognize and act according to the given command.*/
+    if(!strcmp(EXIT, command))
+        exitProgram();
+
+}
+
+void menu(){
+    /*Main loop.*/
+    printf(MENU_1);
+    printf(MENU_2);
+    printf(MENU_3);
+    printf(MENU_4);
+
+    while(1){
+        printf(REQUEST);
+        char *command = readFromStdin();
+        interpret(command);
+    }
+}
+
 int main(){
     authenticate();
-    
+    menu();
     return 0;
 }
