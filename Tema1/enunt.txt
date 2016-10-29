@@ -1,0 +1,12 @@
+ENUNT:
+Proiectati si implementati urmatorul protocol de comunicare intre procese:
+ * comunicarea se face prin executia de comenzi citite de la tastatura in procesul tata si executate in procesele fiu
+ * comenzile sunt siruri de caractere delimitate de new line
+ * raspunsurile sunt siruri de octeti prefixate de lungimea raspunsului
+ * rezultatul obtinut in urma executiei oricarei comenzi va fi afisat de procesul tata
+Protocolul minimal cuprinde comenzile:
+ 1. login : username (a carei existenta este validata prin utilizarea unui fisier de configurare)
+ 2. myfind file - o comanda care permite gasirea unui fisier si afisarea de informatii asociate acelui fisier; informatiile vor fi de tipul: data crearii, data modificarii, dimensiunea fisierului, drepturile de access asupra fisierului etc.
+ 3. mystat file - o comanda ce permite vizualizarea atributelor unui fisier
+ 4. quit
+Comunicarea intre procese se va face folosind cel putin odata fiecare din urmatoarele mecanisme ce permit comunicarea: pipe-uri interne, pipe-uri externe si socketpair.
