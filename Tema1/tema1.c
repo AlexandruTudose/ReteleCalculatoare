@@ -7,20 +7,23 @@
 #define CREDENTIALS "credentials.json"
 #define MAX_ATTEMPTS 3
 
-#define INTRO   "\n     WELCOME!\n In order to continue you have to authenticate.\n"
+#define INTRO_1 "\n     WELCOME!\n This is a secured app. At this point the only two"
+#define INTRO_2 "\ncommands available are \"login\" and \"exit\".\n"
 #define I_U_R   " Please enter a username. The default is \"admin\".\n>"
 #define I_P_R   " Please enter the password. The default is \"admin\".\n>"
 #define I_ACC   "\n Nice to see you %s."
-#define I_ERR   "\n Authentication failed."
-#define I_E_T   "To many failed attempts."
-#define I_EXIT  "\n Press \"%s\" to Exit."
+#define I_ERR   " Authentication failed."
+#define I_E_T   " To many failed attempts."
+#define I_EXIT  "\n Press Enter to Exit."
+#define LOGIN   "login"
+#define MYFIND  "myfind"
+#define MYSTAT  "mystat"
 #define EXIT    "exit"
-#define ENTER   "Enter"
-#define MENU_1  "\n This the main menu. You can choose from the fallowing options,"
-#define MENU_2  "\nby writing the right command. Warning: \"myfind\" and \"mystat\""
-#define MENU_3  "\nalso require arguments. Type \"help myfind\" or \"help mystat\" for"
-#define MENU_4  "\nmore datails.\n1. myfind\n2. mystat\n3. exit"
-#define REQUEST "\n> "
+#define MENU_1  "\n This is the main menu. You can choose from the fallowing options,"
+#define MENU_2  "\nby writing the right command: \"myfind\", \"mystat\" or \"exit\"."
+#define MENU_3  "\nWarning: \"myfind\" and \"mystat\" also require arguments. Type "
+#define MENU_4  "\n\"help myfind\" or \"help mystat\" for more datails."
+#define REQUEST "> "
 
 
 char *readCredentials(){
@@ -60,9 +63,8 @@ void exitProgram(){
     exit(0);
 }
 
-void authenticate(){
-    printf(INTRO);
-
+int authenticate(){
+    /// not yet
     int count = 0;
     while(count < MAX_ATTEMPTS){
         count++;
@@ -76,6 +78,7 @@ void authenticate(){
         if(verifyCredential(username, password)){
             printf(I_ACC, username);
             count = MAX_ATTEMPTS + 1;
+            return 0;
         }
         else{
             printf("%s", I_ERR);
@@ -83,37 +86,66 @@ void authenticate(){
     }
     if(count == MAX_ATTEMPTS){
         printf("%s", I_E_T);
-        printf(I_EXIT, ENTER);
+        printf(I_EXIT);
         readFromStdin();
 
         //should exit from a son.
         exitProgram();
     }
+    return 1;
 }
 
-void interpret(char *command){
+void findFile(){
+    //find command
+}
+
+void statFile(){
+    //stat command
+}
+
+
+void notFound(){
+    //not found
+}
+
+int interpret(char *command, int before_login){
     /*Recognize and act according to the given command.*/
     if(!strcmp(EXIT, command))
         exitProgram();
-
+    if(before_login){
+        if(!strcmp (LOGIN, command))
+            return authenticate();
+    }
+    else{
+        if(strstr(command, MYFIND))
+            findFile();
+        if(strstr(command, MYSTAT))
+            statFile();
+    }
+    notFound();
+    return 1;
 }
 
 void menu(){
-    /*Main loop.*/
+    printf(INTRO_1);
+    printf(INTRO_2);
+    char *command;
+    do{
+        printf(REQUEST);
+        command = readFromStdin();
+    }while(interpret(command, 1));
+    
     printf(MENU_1);
     printf(MENU_2);
     printf(MENU_3);
     printf(MENU_4);
-
-    while(1){
+    do{
         printf(REQUEST);
-        char *command = readFromStdin();
-        interpret(command);
-    }
+        command = readFromStdin();
+    }while(interpret(command, 0));
 }
 
 int main(){
-    authenticate();
     menu();
     return 0;
 }
