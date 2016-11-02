@@ -15,31 +15,58 @@
 #include <stdarg.h>
 #include <fcntl.h>
 #include <sys/socket.h>
+#include <sys/wait.h>
 #include <signal.h>
 
 #define SIZE 1024
 #define CREDENTIALS "credentials.json"
 #define MAX_ATTEMPTS 3
 
-#define INTRO_1   "\n     WELCOME!\n This is a secured app. At this point the only two"
-#define INTRO_2   "\ncommands available are \"login\" and \"exit\".\n"
-#define I_U_R     " Please enter a username. The default is \"admin\".\n> "
-#define I_P_R     " Please enter the password. The default is \"admin\".\n> "
-#define I_ACC     "\n Nice to see you %s."
-#define I_ERR     " Authentication failed."
-#define I_E_T     " To many failed attempts."
-#define I_EXIT    "\n Press Enter to Exit."
+#define INTRO_1   "\n     WELCOME!\nThis is a secured app. At this point the only three"
+#define INTRO_2   "\ncommands available are \"login\", \"cctt\" and \"quit\".\n"
+#define I_U_R     "Please enter a username. The default is \"admin\".\n> "
+#define I_P_R     "Please enter the password. The default is \"admin\".\n> "
+#define I_ACC     "\nNice to see you %s!"
+#define I_ERR     "Authentication failed."
+#define I_E_T     "To many failed attempts."
+#define I_EXIT    "\nPress Enter to quit."
 #define LOGIN     "login"
 #define MYFIND    "myfind"
 #define MYSTAT    "mystat"
-#define EXIT      "exit"
-#define MENU_1    "\n This is the main menu. You can choose from the fallowing options,"
-#define MENU_2    "\nby writing the right command: \"myfind\", \"mystat\" or \"exit\"."
-#define MENU_3    "\nWarning: \"myfind\" and \"mystat\" also require arguments. Type "
-#define MENU_4    "\n\"help myfind\" or \"help mystat\" for more datails.\n"
+#define EXIT      "quit"
+#define CCTT      "cctt"
+#define CCTT_0    "cctt pipe"
+#define CCTT_1    "cctt fifo"
+#define CCTT_2    "cctt socket"
+#define CCTT_T(A) (A)?((A==1)?"external pipe (fifo)":"socket pair"):"internal pipe"
+#define CCTT_S    "Comunication type changed to %s.\n"
+#define H_CCTT    "help cctt"
+#define H_MYFIND  "help myfind"
+#define H_MYSTAT  "help mystat"
+#define MENU      "\nThis is the main menu. You can choose from the fallowing options, \
+                  \nby writing the right command: \"myfind\", \"mystat\", \"cctt\" or \"quit\".\
+                  \nWarning: \"myfind\", \"mystat\" and \"cctt\" also require arguments. Type \
+                  \n\"help myfind\", \"help mystat\" or \"help cctt\" for more datails.\n"
 #define REQUEST   "> "
-#define NOT_FOUND " Command not found.\n"
-#define DIR_ERR   "Directory can not be opened."
+#define NOT_FOUND "Command not found.\n"
+#define H_F_MSG   "MYFIND - myfind\n    You can use this command to search for files around your computer.\
+                   \nIt requires two arguments separated by space. The first one is the path\
+                   \nand the second one is the name of the file you are looking for.\
+                   \n    Example: \"myfind /home tema1.c\"\n"
+#define H_S_MSG   "MYSTAT - mystat\n    You can use this command to discover information about a file from\
+                   \nyour computer. It requires one argument that represent the path of the \
+                   \nfile you want to discover information about.\n    Example: \"mystat /home/retele/tema1.c\"\n"
+#define H_C_MSG   "CHANGE COMMUNICATION TYPE TO - cctt\n    You can use this command to switch between different communication types\
+                   \nIt requires one argument representing the communication type. There are \
+                   \nonly three communication types available: \"pipe\", \"fifo\" and \"socket\".\
+                   \n    Example: \"cctt pipe\"\n"
+#define ERR_OPENDIR "Directory can not be opened."
+#define ERR_STAT    "Stat getting failed. Invalid path.\n"
+#define ERR_ARGS    "This command is wrong or it requires different arguments. Type \"help %s\" for details.\n"
+#define Q_MSG       "Session ended.\n"
+
+#define STRING(A); char *A = (char *) malloc(SIZE);\
+                   memset(A, 0, SIZE);
 
 #define FIFO_1 "fifo_1"
 #define FIFO_2 "fifo_2"
@@ -84,7 +111,7 @@
 #define END_READING_IN_PARENT \
     close(file_descriptors[((type == socket_pair)?1:2)]);
 
-enum communication_type {internal_pipe, external_pipe, socket_pair};
+enum communication_type {internal_pipe, external_pipe, socket_pair} type = internal_pipe;
 
 char *readCredentials(){
     /*Put the content from credentials.json in a buffer.*/
@@ -98,8 +125,7 @@ char *readCredentials(){
 
 int verifyCredential(char *username, char *password){
     /*Verify the existance of the given name and password.*/
-    char *current_credential = (char *) malloc(SIZE);
-    memset(current_credential, 0, sizeof(char) * SIZE);
+    STRING(current_credential);
     char *credentials = readCredentials(); 
     sprintf(current_credential, "\"%s\": \"%s\"", username, password);
     int return_value = 0;
@@ -112,9 +138,7 @@ int verifyCredential(char *username, char *password){
 
  char *readFromStdin(){
     /*Read from stdin untill '\n' is encountered.*/
-
-    char *buffer = (char *) malloc(SIZE);
-    memset(buffer, 0, sizeof(char) * SIZE);
+    STRING(buffer);
     int count = 0;
     while((buffer[count++] = getchar()) != '\n');
     buffer[count-1] = '\0';
@@ -122,45 +146,40 @@ int verifyCredential(char *username, char *password){
  }
 
 void exitProgram(){
-    enum communication_type type = 0;
+    /*Kills the main process from a child by sending a Quit signal.*/
     INIT_COMMUNICATION
     INIT_READING_IN_CHILD
-            char *command = (char *) malloc(SIZE);
-            memset(command, 0, SIZE);
-            read(file_descriptors[0], command, SIZE);
+       STRING(command);
+       read(file_descriptors[0], command, SIZE);
     END_READING_IN_CHILD
         if(!strcmp(command, EXIT))
-            kill(getppid(), 9);
+            kill(getppid(), SIGQUIT);
     INIT_WRITING_IN_CHILD
     END_WRITING_IN_CHILD
     INIT_WRITING_IN_PARENT
-        char *command = (char *) malloc(SIZE);
-        memset(command, 0, SIZE);
+        STRING(command);
         strcpy(command, EXIT);
         write(file_descriptors[1], command, SIZE);
     END_WRITING_IN_PARENT
     INIT_READING_IN_PARENT
     END_READING_IN_PARENT
+    sleep(1);
 }
 
 int authenticate(){
-    enum communication_type type = 1;
-    
+    /*"MAX_ATTEMPTS" times authentification request based on input "username" and "password" with exit on the third failure.*/
     int count = 0;
     while(count < MAX_ATTEMPTS){
         
         INIT_COMMUNICATION
         INIT_READING_IN_CHILD
-            char *username = (char *) malloc(SIZE);
-            memset(username, 0, SIZE);
-            char *password = (char *) malloc(SIZE);
-            memset(password, 0, SIZE);
+            STRING(username);
+            STRING(password);
             read(file_descriptors[0], username, SIZE);
             read(file_descriptors[0], password, SIZE);
         END_READING_IN_CHILD
             int unprocessed_response = verifyCredential(username, password);
-            char *response = (char *) malloc (SIZE);
-            memset(response, 0, SIZE);
+            STRING(response);
             response[0] = '1'; //number of characters to be sent
             response[1] = ' ';
             response[2] = (unprocessed_response)?'1':'0';
@@ -177,11 +196,9 @@ int authenticate(){
             write(file_descriptors[1], password, SIZE);
         END_WRITING_IN_PARENT
         INIT_READING_IN_PARENT
-            char *response = (char *) malloc(SIZE);
-            memset(response, 0, SIZE);
+            STRING(response);
             read(file_descriptors[((type == socket_pair)?1:2)], response, SIZE);
         END_READING_IN_PARENT
-        
         if(response[2] == '1'){
             printf(I_ACC, username);
             count = MAX_ATTEMPTS + 1;
@@ -202,15 +219,19 @@ int authenticate(){
 }
 
 void getStat(char *path, char *stats){
-    char *name = (char *) malloc(SIZE);
-    memset(name, 0, sizeof(char) * SIZE);
+    /*Return in strig "stats" the required information.*/
+    STRING(name);
     strcpy(name, basename(path));
     struct stat filestat;
-    if (stat(path, &filestat) < 0)
-        printf("error on stat");
-    
-    memset(stats, 0, sizeof(char) * SIZE);
-    sprintf(stats, "  File: %s \n", name);
+    if (stat(path, &filestat) < 0){
+        strcpy(stats, ERR_STAT);
+        return;
+    }
+    if(strcmp(path, stats))
+        memset(stats, 0, sizeof(char) * SIZE);
+    else
+        stats[strlen(stats)] = '\n';
+    sprintf(stats + strlen(stats), "  File: %s \n", name);
     sprintf(stats + strlen(stats), "  Size: %ld\t\t\tBlocks: %ld\t\tIO Block: %ld\n", filestat.st_size, filestat.st_blocks, filestat.st_blksize);
     sprintf(stats + strlen(stats), "Device: %ld\t\t\tInode: %ld\t\tLinks: %ld\n", filestat.st_dev, filestat.st_ino, filestat.st_nlink);
     sprintf(stats + strlen(stats), "Access: (%o/", filestat.st_mode);
@@ -231,15 +252,16 @@ void getStat(char *path, char *stats){
 }
 
 void find(char *path, char *file, char* matches[], int *match_number){
-    /*Recursive search that looks for an exact match which is than added to the "matches" vector of strings.*/
+    /*Recursive search that looks for an exact match which is than added to "matches"-a vector of strings.*/
     DIR *directory;
     struct dirent *directory_entry;
-    char *buffer = (char *) malloc(SIZE);
-    memset(buffer, 0, sizeof(char) * SIZE);
+    STRING(buffer);
     if(path[strlen(path) - 1] == '/')
         path[strlen(path) - 1] = '\0';
-    if(!(directory = opendir(path)))
-        perror(DIR_ERR);
+    if(!(directory = opendir(path))){
+        strcpy(matches[*match_number], ERR_OPENDIR);
+        return;
+    }
     while((directory_entry = readdir(directory))) 
         if(strcmp(directory_entry->d_name, ".") && strcmp(directory_entry->d_name, "..")){
                 memset(buffer, 0, sizeof(char) * SIZE);
@@ -254,21 +276,18 @@ void find(char *path, char *file, char* matches[], int *match_number){
 }
 
 void findFile(char *command){
-    //find
-    enum communication_type type = 1;
+    /*Interpret and execute commands like "myfind *arg1 *arg2".*/
     INIT_COMMUNICATION
     INIT_READING_IN_CHILD
-            char *command = (char *) malloc(SIZE);
-            memset(command, 0, SIZE);
-            read(file_descriptors[0], command, SIZE);
+        STRING(command);
+        read(file_descriptors[0], command, SIZE);
     END_READING_IN_CHILD
-        char *path = (char *) malloc(SIZE);
-        memset(path, 0, sizeof(char) * SIZE);
+        STRING(path);
         memcpy(path, command+strlen(MYFIND) + 1, strlen(command) - strlen(MYFIND) - 1);
         int space_location = 0;
-        while(path[++space_location] != ' ');
-        char *name = (char *) malloc(SIZE);
-        memset(name, 0, sizeof(char) * SIZE);
+        if(path[space_location] != ' ')
+            while(path[++space_location] != ' ');
+        STRING(name);
         memcpy(name, path + space_location + 1, strlen(path) - space_location - 1);
         memset(path + space_location, 0, strlen(path) - space_location); 
         int match_number = SIZE;
@@ -279,6 +298,9 @@ void findFile(char *command){
         }
         match_number = 0;
         find(path, name, matches, &match_number);
+        // Comment the next to lines for original myfind capabilities.
+        for(int i=0; i<SIZE && matches[i][0]; ++i)
+            getStat(matches[i], matches[i]);
     INIT_WRITING_IN_CHILD
     for(int i=0; i<SIZE; ++i)
         write(file_descriptors[((type == socket_pair)?0:3)], matches[i], SIZE);
@@ -301,20 +323,15 @@ void findFile(char *command){
 }
 
 void statFile(char *command){
-    //stat command
-    enum communication_type type = 0;
+    /*Interpret and execute a command like "mystat *arg".*/
     INIT_COMMUNICATION
     INIT_READING_IN_CHILD
-            char *command = (char *) malloc(SIZE);
-            memset(command, 0, SIZE);
-            read(file_descriptors[0], command, SIZE);
+        STRING(command);
+        read(file_descriptors[0], command, SIZE);
     END_READING_IN_CHILD
-        char *path = (char *) malloc(SIZE);
-        memset(path, 0, sizeof(char) * SIZE);
+        STRING(path);
         memcpy(path, command+strlen(MYSTAT) + 1, strlen(command) - strlen(MYSTAT) - 1);
-        char *response = (char *) malloc(SIZE);
-        memset(response, 0, sizeof(char) * SIZE);
-        
+        STRING(response);
         if(path) getStat(path, response);
     INIT_WRITING_IN_CHILD
         write(file_descriptors[((type == socket_pair)?0:3)], response, SIZE);
@@ -323,42 +340,74 @@ void statFile(char *command){
         write(file_descriptors[1], command, SIZE);
     END_WRITING_IN_PARENT
     INIT_READING_IN_PARENT
-        char *response = (char *) malloc(SIZE);
-        memset(response, 0, SIZE);
+        STRING(response);
         read(file_descriptors[((type == socket_pair)?1:2)], response, SIZE);
     END_READING_IN_PARENT
     printf("%s", response);
 }
 
 void notFound(){
-    //not foundi
+    /*Message for when the command is not recognized.*/
     printf(NOT_FOUND);
 }
 
 int stringIsCommand(char *string, char *command){
+    /*Check if the given string is like "myfind *" or like "mystat *".*/
     unsigned long counter = 0;
     for(;counter<strlen(command); counter++)
         if(string[counter] != command[counter])
             return 0;
-    if(string[counter] != ' ')
-        return 0;
-    return 1;
+    if(string[counter] == ' ' && strlen(string) > (counter + 1))
+        return 1;
+    return 0;
 }
 
 int interpret(char *command, int before_login){
     /*Recognize and act according to the given command.*/
     if(!strcmp(EXIT, command))
         exitProgram();
+    else if(!strcmp(command, H_CCTT)){
+        printf(H_C_MSG);
+        return 1;
+    }
+    else if(!strcmp(command, CCTT_0)){
+        printf(CCTT_S, CCTT_T(type = internal_pipe));
+        return 1;
+    }
+    else if(!strcmp(command, CCTT_1)){
+        printf(CCTT_S, CCTT_T(type = external_pipe));
+        return 1;
+    }
+    else if(!strcmp(command, CCTT_2)){
+        printf(CCTT_S, CCTT_T(type = socket_pair));
+        return 1;
+    }
+    else if(strstr(command, CCTT)){
+        printf(ERR_ARGS, CCTT);
+        return 1;
+    }
     if(before_login){
         if(!strcmp (LOGIN, command))
             return authenticate();
+        else
+            notFound();
     }
     else if(stringIsCommand(command, MYFIND))
         findFile(command);
     else if(stringIsCommand(command, MYSTAT))
         statFile(command);
-    else
-        notFound();
+    else if(!strcmp(command, H_MYFIND))
+        printf(H_F_MSG);
+    else if(!strcmp(command, H_MYSTAT))
+        printf(H_S_MSG);
+    else{
+        if(strstr(command, MYSTAT))
+            printf(ERR_ARGS, MYSTAT);
+        else if(strstr(command, MYFIND))
+            printf(ERR_ARGS, MYFIND);
+        else
+            notFound();
+    }
     return 1;
 }
 
@@ -371,9 +420,7 @@ void menu(){
         if(command) free(command);
         command = readFromStdin();
     }while(interpret(command, 1));
-    printf(MENU_2);
-    printf(MENU_3);
-    printf(MENU_4);
+    printf(MENU);
     do{
         printf(REQUEST);
         if(command) free(command);
@@ -381,7 +428,13 @@ void menu(){
     }while(interpret(command, 0));
 }
 
+void quitProc(){
+    printf(Q_MSG);
+    _exit(0);
+}
+
 int main(){
+    signal(SIGQUIT, quitProc);
     menu();
     return 0;
 }
