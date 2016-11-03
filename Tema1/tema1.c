@@ -63,10 +63,16 @@
 #define ERR_OPENDIR "Directory can not be opened."
 #define ERR_STAT    "Stat getting failed. Invalid path.\n"
 #define ERR_ARGS    "This command is wrong or it requires different arguments. Type \"help %s\" for details.\n"
+#define ERR_BUFF    "During the communication process an error occured and the message was altered."
 #define Q_MSG       "Session ended.\n"
 
 #define STRING(A); char *A = (char *) malloc(SIZE);\
                    memset(A, 0, SIZE);
+
+#define ADD_SIZE(A);               {STRING(aux); sprintf(aux, "%ld %s", strlen(A), A); memcpy(A, aux, SIZE);}
+#define CHECK_AND_REMOVE_SIZE(A);  {STRING(auxa); STRING(auxb); int counts = -1; while(A[++counts] != ' ') auxa[counts] = A[counts];\
+                                               memcpy(A, A + counts +1, SIZE - counts - 1); sprintf(auxb, "%ld", strlen(A));\
+                                               if(strcmp(auxa, auxb)) printf(ERR_BUFF);}
 
 #define FIFO_1 "fifo_1"
 #define FIFO_2 "fifo_2"
@@ -151,6 +157,7 @@ void exitProgram(){
     INIT_READING_IN_CHILD
        STRING(command);
        read(file_descriptors[0], command, SIZE);
+       CHECK_AND_REMOVE_SIZE(command);
     END_READING_IN_CHILD
         if(!strcmp(command, EXIT))
             kill(getppid(), SIGQUIT);
@@ -159,6 +166,7 @@ void exitProgram(){
     INIT_WRITING_IN_PARENT
         STRING(command);
         strcpy(command, EXIT);
+        ADD_SIZE(command);
         write(file_descriptors[1], command, SIZE);
     END_WRITING_IN_PARENT
     INIT_READING_IN_PARENT
@@ -177,6 +185,8 @@ int authenticate(){
             STRING(password);
             read(file_descriptors[0], username, SIZE);
             read(file_descriptors[0], password, SIZE);
+            CHECK_AND_REMOVE_SIZE(username);
+            CHECK_AND_REMOVE_SIZE(password);
         END_READING_IN_CHILD
             int unprocessed_response = verifyCredential(username, password);
             STRING(response);
@@ -184,6 +194,7 @@ int authenticate(){
             response[1] = ' ';
             response[2] = (unprocessed_response)?'1':'0';
         INIT_WRITING_IN_CHILD
+            ADD_SIZE(response);
             write(file_descriptors[((type == socket_pair)?0:3)], response, SIZE);
         END_WRITING_IN_CHILD
         INIT_WRITING_IN_PARENT
@@ -192,14 +203,18 @@ int authenticate(){
             char *username = readFromStdin();
             printf(I_P_R);
             char *password = readFromStdin();
+            ADD_SIZE(username);
+            ADD_SIZE(password);
             write(file_descriptors[1], username, SIZE);
             write(file_descriptors[1], password, SIZE);
         END_WRITING_IN_PARENT
         INIT_READING_IN_PARENT
             STRING(response);
             read(file_descriptors[((type == socket_pair)?1:2)], response, SIZE);
+            CHECK_AND_REMOVE_SIZE(response);
         END_READING_IN_PARENT
         if(response[2] == '1'){
+            CHECK_AND_REMOVE_SIZE(username);
             printf(I_ACC, username);
             count = MAX_ATTEMPTS + 1;
             return 0;
@@ -266,7 +281,9 @@ void find(char *path, char *file, char* matches[], int *match_number){
         if(strcmp(directory_entry->d_name, ".") && strcmp(directory_entry->d_name, "..")){
                 memset(buffer, 0, sizeof(char) * SIZE);
                 sprintf(buffer, "%s/%s", path, directory_entry->d_name);
+                //Change find to search for exact match or for part match.
                 if(!strcmp(directory_entry->d_name, file))
+                //if(strstr(directory_entry->d_name, file))
                     sprintf(matches[(*match_number)++], "%s", buffer);
                 if(directory_entry->d_type == DT_DIR)
                     find(buffer, file, matches, match_number);
@@ -281,6 +298,7 @@ void findFile(char *command){
     INIT_READING_IN_CHILD
         STRING(command);
         read(file_descriptors[0], command, SIZE);
+        CHECK_AND_REMOVE_SIZE(command);
     END_READING_IN_CHILD
         STRING(path);
         memcpy(path, command+strlen(MYFIND) + 1, strlen(command) - strlen(MYFIND) - 1);
@@ -302,10 +320,13 @@ void findFile(char *command){
         for(int i=0; i<SIZE && matches[i][0]; ++i)
             getStat(matches[i], matches[i]);
     INIT_WRITING_IN_CHILD
-    for(int i=0; i<SIZE; ++i)
+    for(int i=0; i<SIZE; ++i){
+        ADD_SIZE(matches[i]);
         write(file_descriptors[((type == socket_pair)?0:3)], matches[i], SIZE);
+    }
     END_WRITING_IN_CHILD
     INIT_WRITING_IN_PARENT
+        ADD_SIZE(command);
         write(file_descriptors[1], command, SIZE);
     END_WRITING_IN_PARENT
     INIT_READING_IN_PARENT
@@ -315,8 +336,10 @@ void findFile(char *command){
             response[match_number] = (char *) malloc(SIZE);
             memset(response[match_number], 0, sizeof(char) * SIZE);
         }
-    for(int i=0; i<SIZE; ++i)
+    for(int i=0; i<SIZE; ++i){
         read(file_descriptors[((type == socket_pair)?1:2)], response[i], SIZE);
+        CHECK_AND_REMOVE_SIZE(response[i]);
+    }
     END_READING_IN_PARENT
     for(int i=0; i<SIZE && response[i][0]; ++i)
         printf("%s\n", response[i]);
@@ -328,20 +351,24 @@ void statFile(char *command){
     INIT_READING_IN_CHILD
         STRING(command);
         read(file_descriptors[0], command, SIZE);
+        CHECK_AND_REMOVE_SIZE(command);
     END_READING_IN_CHILD
         STRING(path);
         memcpy(path, command+strlen(MYSTAT) + 1, strlen(command) - strlen(MYSTAT) - 1);
         STRING(response);
         if(path) getStat(path, response);
     INIT_WRITING_IN_CHILD
+        ADD_SIZE(response);
         write(file_descriptors[((type == socket_pair)?0:3)], response, SIZE);
     END_WRITING_IN_CHILD
     INIT_WRITING_IN_PARENT
+        ADD_SIZE(command);
         write(file_descriptors[1], command, SIZE);
     END_WRITING_IN_PARENT
     INIT_READING_IN_PARENT
         STRING(response);
         read(file_descriptors[((type == socket_pair)?1:2)], response, SIZE);
+        CHECK_AND_REMOVE_SIZE(response);
     END_READING_IN_PARENT
     printf("%s", response);
 }
