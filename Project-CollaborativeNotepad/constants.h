@@ -27,3 +27,6 @@
 #define ACK_C_SENT    "[CLIENT] Request \"%s\" sent.\n"
 #define ACK_C_RECIVED "[CLIENT] Response \"%s\" received.\n"
 
+// Commands
+#define C_EXIT        (char *) "exit"
+

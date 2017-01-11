@@ -15,10 +15,10 @@ int connectToServer(char *ip_address = (char *) IP_ADDRESS, int port = PORT){
     If successful it returns an integer representing the socket descriptor of the connection.
     In case of failure it returns -1.
     */
- 
+
     int socket_descriptor;
     struct sockaddr_in *server = (struct sockaddr_in *) malloc(sizeof(struct sockaddr_in));
-    memset(server, 0, sizeof(server));
+    memset(server, 0, sizeof(struct sockaddr_in));
     if((socket_descriptor = socket(AF_INET, SOCK_STREAM, 0)) == -1){
         perror(ERR_C_SOCKET);
         return -1;
@@ -33,14 +33,14 @@ int connectToServer(char *ip_address = (char *) IP_ADDRESS, int port = PORT){
     printf(ACK_C_CONNECT, ip_address, port);
     return socket_descriptor;
 }
- 
- 
-int requestToServer(int socket_descriptor, char *request, char **response){
+
+
+int requestToServer(int socket_descriptor, char *request, char **response=NULL){
     /*  Initialize a request to the server and waiting for response.
     If succesful it returns 0 and the result in the *response string.
     In case of failure it returns -1.
     */
- 
+
     int buffer_size = strlen(request);
     // Sending first the number of bytes of the actual request.
     if(write(socket_descriptor, &buffer_size, sizeof(int)) < 1){
@@ -53,6 +53,8 @@ int requestToServer(int socket_descriptor, char *request, char **response){
         return -1;
     }
     printf(ACK_C_SENT, request);
+    if(response == NULL)
+        return 0;
     // Reading first the number of bytes of the actual response.
     if(read(socket_descriptor, &buffer_size, sizeof(int)) < 0){
         perror(ERR_C_READ);
@@ -69,6 +71,12 @@ int requestToServer(int socket_descriptor, char *request, char **response){
 }
 
 
+int endConnection(int socket_descriptor){
+    requestToServer(socket_descriptor, C_EXIT);
+    return close(socket_descriptor);
+}
+
+
 int intitServer(int port = PORT, int reuse_addr = 1){
     /*  Initialize a server to a specified port.
     If successful it returns the socket descriptor at which connections can be accepted.
@@ -77,14 +85,14 @@ int intitServer(int port = PORT, int reuse_addr = 1){
 
     int socket_descriptor;
     struct sockaddr_in *server = (struct sockaddr_in *) malloc(sizeof(struct sockaddr_in));
-    memset(server, 0, sizeof(server));
+    memset(server, 0, sizeof(struct sockaddr_in));
     if((socket_descriptor = socket(AF_INET, SOCK_STREAM, 0)) == -1){
         perror(ERR_S_SOCKET);
         return -1;
     }
     if(reuse_addr)
         setsockopt(socket_descriptor, SOL_SOCKET, SO_REUSEADDR, &reuse_addr, sizeof(reuse_addr));
-    server->sin_family = AF_INET;    
+    server->sin_family = AF_INET;
     server->sin_addr.s_addr = htonl(INADDR_ANY);
     server->sin_port = htons(port);
     if(bind(socket_descriptor, (struct sockaddr *) server, sizeof(struct sockaddr)) == -1){
@@ -108,7 +116,7 @@ int acceptClient(int server_sd){
 
     int client_sd;
     struct sockaddr_in *client = (struct sockaddr_in *) malloc(sizeof(struct sockaddr_in));
-    memset(client, 0, sizeof(client));
+    memset(client, 0, sizeof(struct sockaddr_in));
     socklen_t sockaddr_size = sizeof(struct sockaddr);
     if ((client_sd = accept(server_sd, (struct sockaddr *) client, &sockaddr_size)) < 0){
         perror(ERR_S_ACCEPT);
@@ -142,8 +150,9 @@ int processRequest(int socket_descriptor, int interpret_request(char *, char **)
     // Compute response
     char *response;
     int exit_flag = interpret_request(request, &response);
+    if(response == NULL)
+        return exit_flag;
     buffer_size = strlen(response);
-          
     // Sending first the number of bytes of the actual response.i
     if(write(socket_descriptor, &buffer_size, sizeof(int)) < 1){
         perror(ERR_S_WRITE);

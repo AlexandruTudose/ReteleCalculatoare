@@ -1,4 +1,4 @@
-#include "client-server.h"
+#include "../client-server.h"
 
 #include <thread>
 using namespace std;
@@ -9,12 +9,13 @@ int interpretRequest(char* request, char **response){
     If the process was successful it returns 1.
     If it was the last request it returns 0.
     */
-
-    *response = (char*) malloc(strlen(request));
-    for(int i=0; i<strlen(request); ++i){
-        (*response)[strlen(request)-1-i] = request[i];
+    if(!strcmp(request, C_EXIT)){
+        *response = NULL;
+        return 0;
     }
-    return 0;
+    *response = (char*) malloc(strlen("request"));
+    strcpy(*response, "request");
+    return 1;
 }
 
 
