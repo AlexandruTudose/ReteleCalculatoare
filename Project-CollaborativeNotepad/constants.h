@@ -28,5 +28,10 @@
 #define ACK_C_RECIVED "[CLIENT] Response \"%s\" received.\n"
 
 // Commands
-#define C_EXIT        (char *) "exit"
-
+#define C_EXIT        (char *) "exit\0"
+#define C_EVENT       (char *) "EVENT\0"
+#define C_FILES       (char *) "getFiles\0"
+#define C_NULL_EVENT  (char *) "nullEvent\0"
+#define C_EDIT        (char *) "edit\0"
+#define C_EMPTY       (char *) "empty\0"
+#define C_UPDATE      (char *) "update\0"

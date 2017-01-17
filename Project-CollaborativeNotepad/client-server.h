@@ -10,6 +10,43 @@
 #include "constants.h"
 
 
+typedef struct textBoxEvent{
+    int type;
+    int key;
+    int modifiers;
+    int native_scan_code;
+    int native_modifier;
+    int native_virtual_key;
+    int count;
+    int unicode;
+    int cursor;
+}textBoxEvent;
+
+
+int writeEvent(int socket_descriptor, textBoxEvent *event){
+    return write(socket_descriptor, event, sizeof(textBoxEvent));
+}
+
+int readEvent(int socket_descriptor, textBoxEvent **event){
+    read(socket_descriptor, *event, sizeof(textBoxEvent));
+    return 0;
+}
+
+int sendNullEvent(int socket_descriptor, int val = 0){
+    textBoxEvent null_event;
+    null_event.type = val;
+    null_event.key = val;
+    null_event.modifiers = val;
+    null_event.native_scan_code = val;
+    null_event.native_modifier = val;
+    null_event.native_virtual_key = val;
+    null_event.count = val;
+    null_event.unicode = val;
+    null_event.cursor = val;
+    write(socket_descriptor, &null_event, sizeof(textBoxEvent));
+    return 1;
+}
+
 int connectToServer(char *ip_address = (char *) IP_ADDRESS, int port = PORT){
     /*  Initialize a connection to a specified ip and port.
     If successful it returns an integer representing the socket descriptor of the connection.
@@ -41,7 +78,7 @@ int requestToServer(int socket_descriptor, char *request, char **response=NULL){
     In case of failure it returns -1.
     */
 
-    int buffer_size = strlen(request);
+    int buffer_size = strlen(request) + 1;
     // Sending first the number of bytes of the actual request.
     if(write(socket_descriptor, &buffer_size, sizeof(int)) < 1){
         perror(ERR_C_WRITE);
@@ -53,8 +90,10 @@ int requestToServer(int socket_descriptor, char *request, char **response=NULL){
         return -1;
     }
     printf(ACK_C_SENT, request);
+    //qDebug("%s %s", request, *response);
     if(response == NULL)
         return 0;
+    //qDebug("was not null");
     // Reading first the number of bytes of the actual response.
     if(read(socket_descriptor, &buffer_size, sizeof(int)) < 0){
         perror(ERR_C_READ);
@@ -77,7 +116,7 @@ int endConnection(int socket_descriptor){
 }
 
 
-int intitServer(int port = PORT, int reuse_addr = 1){
+int initServer(int port = PORT, int reuse_addr = 1){
     /*  Initialize a server to a specified port.
     If successful it returns the socket descriptor at which connections can be accepted.
     In case of failure it returns -1.
@@ -127,7 +166,7 @@ int acceptClient(int server_sd){
 }
 
 
-int processRequest(int socket_descriptor, int interpret_request(char *, char **)){
+int processRequest(int socket_descriptor, int client_number, int interpret_request(char *, char **, int)){
     /*  Wait for a request and then respond to it.
     If the process was succesful it returns 1.
     In case of failure it returns -1.
@@ -148,11 +187,12 @@ int processRequest(int socket_descriptor, int interpret_request(char *, char **)
     }
     printf(ACK_S_RECIVED, request);
     // Compute response
-    char *response;
-    int exit_flag = interpret_request(request, &response);
+    char *response = NULL;
+    int exit_flag = interpret_request(request, &response, client_number);
     if(response == NULL)
         return exit_flag;
-    buffer_size = strlen(response);
+    printf("response: %s", response);
+    buffer_size = strlen(response) + 1;
     // Sending first the number of bytes of the actual response.i
     if(write(socket_descriptor, &buffer_size, sizeof(int)) < 1){
         perror(ERR_S_WRITE);
@@ -168,3 +208,49 @@ int processRequest(int socket_descriptor, int interpret_request(char *, char **)
 }
 
 
+int writeStrings(int socket_descriptor, int number, char **names){
+    if(write(socket_descriptor, &number, sizeof(int)) < 1){
+        perror(ERR_S_WRITE);
+        return -1;
+    }
+    //printf("got_here\n");
+    for(int i=0; i<number; ++i){
+        int buffer_size = strlen(names[i])+1;
+        if(write(socket_descriptor, &buffer_size, sizeof(int)) < 1){
+            perror(ERR_S_WRITE);
+            return -1;
+        }
+            //printf("got_here\n");
+        if(write(socket_descriptor, names[i], buffer_size) < 1){
+            perror(ERR_S_WRITE);
+            return -1;
+        }
+    }
+        //printf("got_here\n");
+    return 0;
+}
+
+
+int readStrings(int socket_descriptor, int *number, char ***names){
+    if (read(socket_descriptor, number, sizeof(int)) < 0){
+        perror(ERR_C_READ);
+        return -1;
+    }
+    //printf("got_here\n");
+    names[0] = (char **) malloc(*number * sizeof(char *));
+    int *buffer_size = (int *) malloc (sizeof(int));
+    for(int i=0; i<*number; ++i){
+        if (read(socket_descriptor, buffer_size, sizeof(int)) < 0){
+            perror(ERR_C_READ);
+            return -1;
+        }
+           // printf("got_here\n");
+        names[0][i] = (char *) malloc(*buffer_size);
+        if (read(socket_descriptor, names[0][i], *buffer_size) < 0){
+            perror(ERR_C_READ);
+            return -1;
+        }
+    }
+       // printf("got_here\n");
+    return 0;
+}

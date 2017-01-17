@@ -27,6 +27,10 @@ SOURCES +=\
         cn_client.cpp \
     main_cn_client.cpp
 
-HEADERS  += cn_client.h
+HEADERS  += \
+    ../client-server.h \
+    ../constants.h \
+    ../CN_server/cn_server.h \
+    cn_client.h
 
 FORMS    += cn_client.ui

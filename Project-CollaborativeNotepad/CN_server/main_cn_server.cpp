@@ -1,42 +1,81 @@
-#include "../client-server.h"
+#include "cn_server.h"
 
-#include <thread>
 using namespace std;
 
+cnServer *server = new cnServer();
 
-int interpretRequest(char* request, char **response){
+int interpretRequest(char* request, char **response, int client_number){
     /*  Puts in *response an answer for the request.
     If the process was successful it returns 1.
     If it was the last request it returns 0.
     */
-    if(!strcmp(request, C_EXIT)){
-        *response = NULL;
-        return 0;
+    if(!strcmp(request, (char *) "")){
+        return 1;
     }
-    *response = (char*) malloc(strlen("request"));
-    strcpy(*response, "request");
+    if(!strcmp(request, C_EMPTY)){
+        return 1;
+    }
+    if(!strcmp(request, C_UPDATE)){
+        int number;
+        readStrings(server->getClientSD(client_number), &number, &server->update_text);
+        server->changeUpdateSemaphore();
+        return 1;
+    }
+    if(!strcmp(request, C_EXIT)){
+        return server->endThread(client_number);
+    }
+    if(!strcmp(request, C_NULL_EVENT)){
+        //removeFromEditTracker(client_number);
+        server->updateFilesEditing(client_number);
+        return sendNullEvent(server->getClientSD(client_number));
+    }
+    if(!strcmp(request, C_EVENT)){
+        textBoxEvent *event = new textBoxEvent;
+        readEvent(server->getClientSD(client_number), &event);
+        if(server->hasLoopError(client_number)){
+            server->flipLoopError(client_number);
+            return 1;
+        }
+
+        int *usrs = server->getAssociateUsers(client_number);
+        for(int sd = 1; sd<=usrs[0]; sd++){
+            //printf("from here %d", sd);
+            fflush(0);
+            writeEvent(usrs[sd], event);
+        }
+        return 1;
+    }
+    if(!strcmp(request, C_FILES)){
+        my_files *files = server->getFileNames();
+        writeStrings(server->getClientSD(client_number), files->number_of_files, files->file_names);
+        return 1;
+    }
+    if( strstr(request, C_EDIT)){
+        char *file_name;
+        int size;
+        file_name = server->getFileName(request);
+        //server->addToEditTracker(file_name, client_number);
+        server->updateFilesEditing(client_number, file_name);
+        printf("filename: %s\n", file_name);
+        server->updateFileContent(file_name, client_number);
+        *response = server->getFileContent(file_name);
+        return 1;
+    }
+
     return 1;
 }
 
 
-int threadCode(int socket_descriptor){
+int threadCode(cnServer *server, int client_number){
     /*  The code that every thread executes for it's assigned client.
     */
-
-    while(processRequest(socket_descriptor, &interpretRequest)){};
+    do{
+    }while(processRequest(server->getClientSD(client_number), client_number, &interpretRequest));
     return 0;
 }
 
 
 int main(){
-    int server_sd = intitServer();
-    LOOP{
-        int client_sd;
-        if((client_sd = acceptClient(server_sd)) != -1){
-            // Thread spawn.
-            thread *client_servant = new thread(threadCode, client_sd);
-            client_servant->detach();
-        }
-    }
+    server->spawnThreads(&threadCode);
     return 0;
 }
