@@ -161,14 +161,14 @@ void clientMainWindow::mainFrame(){
     ui->editFrame->hide();
     ui->mainMenu->show();
     initFileList();
+    on_lflbRefresh_pressed();
 }
 
 void clientMainWindow::on_fileList_itemDoubleClicked(QListWidgetItem *item){
     char *request = (char *) malloc(strlen(C_EDIT) + item->text().length() + 1);
     sprintf(request, "%s %s", C_EDIT, item->text().toLatin1().toStdString().c_str());
     requestToServer(socket_descriptor, request, &current_text);
-    qDebug("request snet : %s", current_text);
-
+    //qDebug("request snet : %s", current_text);
     setWindowTitle(windowTitle() + " - " + item->text());
     ui->mainMenu->hide();
     ui->textBox->clear();
@@ -180,15 +180,107 @@ void clientMainWindow::on_fileList_itemDoubleClicked(QListWidgetItem *item){
 
 void clientMainWindow::on_tbbReturn_clicked(){
     requestToServer(socket_descriptor, C_NULL_EVENT);
+    char *text_string = getTextFromBox(ui->textBox);
+    writeStrings(socket_descriptor, 1, &text_string);
     ui->textBox->removeEventFilter(this);
-    //saveLocally();
     mainFrame();
 }
 
 void clientMainWindow::on_flbEdit_pressed(){
-    on_fileList_itemDoubleClicked(current_item);
+    if(current_item)
+        on_fileList_itemDoubleClicked(current_item);
 }
 
 void clientMainWindow::on_fileList_itemClicked(QListWidgetItem *item){
     current_item = item;
+}
+
+void clientMainWindow::on_flbDownload_pressed(){
+    const char* FILES_DIR = "Files";
+    if(current_item){
+        char *request = (char *) malloc(strlen(C_EDIT) + current_item->text().length() + 1);
+        const char *file_name = current_item->text().toLatin1().toStdString().c_str();
+        sprintf(request, "%s %s", C_EDIT, file_name);
+        requestToServer(socket_descriptor, request, &current_text);
+        char *path = (char *) malloc(strlen(file_name)+strlen(FILES_DIR)+1);
+        sprintf(path, "%s/%s", FILES_DIR, file_name);
+        FILE *f = fopen(path, "wb");
+        fprintf(f, "%s", current_text);
+        fclose(f);
+        on_lflbRefresh_pressed();
+    }
+}
+
+void clientMainWindow::on_flbNew_pressed(){
+
+    if(ui->lineEdit->text().toStdString().c_str() != NULL){
+        int length = strlen(ui->lineEdit->text().toStdString().c_str()) + strlen(C_NEW) + 2;
+        char *request = (char *) malloc (length);
+        memset(request, 0, length);
+        sprintf(request, "%s %s", C_NEW,ui->lineEdit->text().toStdString().c_str());
+        requestToServer(socket_descriptor, request);
+    }
+    initFileList();
+}
+
+
+my_files *getFileNames(){
+    const char* FILES_DIR = "Files";
+    my_files *server_files = new my_files();
+    server_files->number_of_files = 0;
+    struct dirent *p_dirent;
+    DIR *p_dir = opendir(FILES_DIR);
+    //qDebug("%d", errno);
+    //if(errno) return server_files;
+    while((p_dirent = readdir(p_dir))){
+        if(strcmp(p_dirent->d_name, (char *) ".") && strcmp(p_dirent->d_name, (char *) "..")){
+            qDebug("got here");
+            server_files->file_names = (char **) realloc(server_files->file_names, (server_files->number_of_files + 1) * sizeof(char *));
+            (server_files->file_names)[(server_files->number_of_files)++] = (char *) malloc(strlen(p_dirent->d_name) + 1);
+            memset((server_files->file_names)[(server_files->number_of_files) - 1], 0, strlen(p_dirent->d_name) + 1);
+            strcpy(server_files->file_names[server_files->number_of_files - 1], p_dirent->d_name);
+        }
+    }
+    return server_files;
+}
+
+void clientMainWindow::on_lflbRefresh_pressed(){
+    ui->localFileList->clear();
+    my_files *client_files = getFileNames();
+    qDebug("%d", client_files->number_of_files);
+    for(int i=0; i<client_files->number_of_files; ++i){
+        ui->localFileList->addItem(client_files->file_names[i]);
+    }
+}
+
+void clientMainWindow::on_flbRefresh_pressed(){
+    initFileList();
+}
+
+void clientMainWindow::on_localDelete_pressed(){
+    if(current_local_item){
+        const char* FILES_DIR = "Files";
+        const char *file_name = current_local_item->text().toStdString().c_str();
+        char *path = (char *) malloc (strlen(FILES_DIR) + strlen(file_name) +2);
+        memset(path, 0, strlen(FILES_DIR) + strlen(file_name) +2);
+        sprintf(path, "%s/%s", FILES_DIR, file_name);
+        remove(path);
+    }
+    on_lflbRefresh_pressed();
+}
+
+void clientMainWindow::on_serverDelete_pressed(){
+    if(current_item){
+        const char *file_name = current_item->text().toStdString().c_str();
+        char *buffer = (char *) malloc (strlen(file_name) + 2 + strlen(C_REMOVE));
+        memset(buffer, 0, strlen(C_REMOVE) + strlen(file_name) + 2);
+        sprintf(buffer, "%s %s", C_REMOVE, file_name);
+        qDebug("%s", buffer);
+        requestToServer(socket_descriptor, buffer);
+        initFileList();
+    }
+}
+
+void clientMainWindow::on_localFileList_itemClicked(QListWidgetItem *item){
+    current_local_item = item;
 }

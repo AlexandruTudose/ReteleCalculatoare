@@ -35,3 +35,6 @@
 #define C_EDIT        (char *) "edit\0"
 #define C_EMPTY       (char *) "empty\0"
 #define C_UPDATE      (char *) "update\0"
+#define C_NEW         (char *) "newf\0"
+#define C_DOWNLOAD    (char *) "download\0"
+#define C_REMOVE      (char *) "rmov\0"

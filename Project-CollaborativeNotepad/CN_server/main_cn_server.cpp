@@ -26,6 +26,9 @@ int interpretRequest(char* request, char **response, int client_number){
     }
     if(!strcmp(request, C_NULL_EVENT)){
         //removeFromEditTracker(client_number);
+        int number;
+        readStrings(server->getClientSD(client_number), &number, &server->update_text);
+        server->updateFileContent(server->getFileName(client_number));
         server->updateFilesEditing(client_number);
         return sendNullEvent(server->getClientSD(client_number));
     }
@@ -52,14 +55,24 @@ int interpretRequest(char* request, char **response, int client_number){
     }
     if( strstr(request, C_EDIT)){
         char *file_name;
-        int size;
         file_name = server->getFileName(request);
         //server->addToEditTracker(file_name, client_number);
         server->updateFilesEditing(client_number, file_name);
-        printf("filename: %s\n", file_name);
+        //printf("filename: %s\n", file_name);
         server->updateFileContent(file_name, client_number);
         *response = server->getFileContent(file_name);
         return 1;
+    }
+    if( strstr(request, C_NEW)){
+        char *file_name;
+        file_name = server->getFileName(request);
+        server->newFile(file_name);
+    }
+
+    if (strstr(request, C_REMOVE)){
+        char *file_name;
+        file_name = server->getFileName(request);
+        server->removeFile(file_name);
     }
 
     return 1;

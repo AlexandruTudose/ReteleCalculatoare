@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>358</width>
-    <height>191</height>
+    <width>451</width>
+    <height>236</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -56,29 +56,55 @@
         <widget class="QListWidget" name="fileList"/>
        </widget>
       </widget>
-      <widget class="QSplitter" name="splitter_5">
+      <widget class="QSplitter" name="splitter_8">
        <property name="orientation">
-        <enum>Qt::Horizontal</enum>
+        <enum>Qt::Vertical</enum>
        </property>
-       <widget class="QSplitter" name="splitter_4">
+       <widget class="QSplitter" name="splitter_7">
         <property name="orientation">
          <enum>Qt::Horizontal</enum>
         </property>
-        <widget class="QPushButton" name="flbDownload">
-         <property name="text">
-          <string>Download</string>
+        <widget class="QSplitter" name="splitter_4">
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
          </property>
+         <widget class="QPushButton" name="localDelete">
+          <property name="text">
+           <string>Local Delete</string>
+          </property>
+         </widget>
+         <widget class="QPushButton" name="flbDownload">
+          <property name="text">
+           <string>Download</string>
+          </property>
+         </widget>
         </widget>
-        <widget class="QPushButton" name="flbEdit">
-         <property name="text">
-          <string>Edit</string>
+        <widget class="QSplitter" name="splitter_6">
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
          </property>
+         <widget class="QPushButton" name="flbEdit">
+          <property name="text">
+           <string>Edit</string>
+          </property>
+         </widget>
+         <widget class="QPushButton" name="serverDelete">
+          <property name="text">
+           <string>Server Delete</string>
+          </property>
+         </widget>
         </widget>
        </widget>
-       <widget class="QPushButton" name="flbNew">
-        <property name="text">
-         <string>New File</string>
+       <widget class="QSplitter" name="splitter_5">
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
         </property>
+        <widget class="QLineEdit" name="lineEdit"/>
+        <widget class="QPushButton" name="flbNew">
+         <property name="text">
+          <string>New File</string>
+         </property>
+        </widget>
        </widget>
       </widget>
      </widget>
@@ -91,7 +117,7 @@
       <widget class="QPlainTextEdit" name="textBox"/>
       <widget class="QPushButton" name="tbbReturn">
        <property name="text">
-        <string>Save Locally &amp;&amp; Return</string>
+        <string>Save &amp;&amp; Return</string>
        </property>
       </widget>
      </widget>

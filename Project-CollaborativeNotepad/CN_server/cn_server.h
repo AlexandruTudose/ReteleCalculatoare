@@ -115,6 +115,10 @@ public:
         return server_files;
     };
 
+    char *getFileName(int current_client_number){
+        return files_editing[current_client_number];
+    };
+
     char *getFileName(char *request){
         char *file_name = (char *) malloc(strlen(request) - strlen(C_EDIT));
         strcpy(file_name, request + strlen(C_EDIT) + 1);
@@ -139,16 +143,37 @@ public:
         for(int i=0; i<max_clients && index<client_number; ++i)
             if(available[i]){
                 index++;
-                printf("siruri: %s %s\n", file_name, files_editing[i]);
+                //printf("siruri: %s %s\n", file_name, files_editing[i]);
                 if(i != current_client_number && files_editing[i] && !strcmp(file_name, files_editing[i]))
                     return i;
             }
         return -1;
     };
 
+    void updateFileContent(char *file_name){
+            char *path = (char *) malloc(strlen(file_name)+strlen(FILES_DIR)+1);
+            sprintf(path, "%s/%s", FILES_DIR, file_name);
+            FILE *f = fopen(path, "wb");
+            fprintf(f, "%s", update_text[0]);
+            fclose(f);
+    };
+
+    void newFile(char *file_name){
+        char *path = (char *) malloc(strlen(file_name)+strlen(FILES_DIR)+1);
+        sprintf(path, "%s/%s", FILES_DIR, file_name);
+        FILE *f = fopen(path, "wb");
+        fclose(f);
+    }
+
+    void removeFile(char *file_name){
+        char *path = (char *) malloc(strlen(file_name)+strlen(FILES_DIR)+1);
+        sprintf(path, "%s/%s", FILES_DIR, file_name);
+        remove(path);
+    }
+
     void updateFileContent(char *file_name, int current_client_number){
        int update_client_number = getClientForFile(file_name, current_client_number);
-        printf("client de contact: %d\n", update_client_number);
+        //printf("client de contact: %d\n", update_client_number);
         if(update_client_number != -1){
             char *path = (char *) malloc(strlen(file_name)+strlen(FILES_DIR)+1);
             sprintf(path, "%s/%s", FILES_DIR, file_name);
@@ -157,10 +182,10 @@ public:
             update_semaphore = true;
             do{
             }while(update_semaphore);
-            printf("inUPDATE: \n");
+            //printf("inUPDATE: \n");
             fprintf(f, "%s", update_text[0]);
             fclose(f);
-            printf("inUPDATE: \n");
+            //printf("inUPDATE: \n");
         }
     };
 
