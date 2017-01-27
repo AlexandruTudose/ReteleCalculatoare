@@ -1,0 +1,22 @@
+README file for CollaborativeNotepad Project
+
+
+1. How to start the application?
+
+Here you will find two folders one containing the server and one containing the client of this application.
+First open a terminal in CN_server folder and type "./run_server.sh". Then open a terminal in CN_client folder and type "./run_client.sh".
+You can open as many clients as you desire.
+
+! Warning: To be able to compile the application you need to have installed g++ and QT. Otherwise a precompiled binaries will run.
+
+
+2. How the client interface works?
+
+As soon as you open a client you will see the main window. This window provides several functionalities: 
+    a. Two buttons labeled "Local Files" and "Server Files". Clicking on those will refresh the corresponding lists under them.
+    b. The "Local Files" list displays the content of folder "Files" from where the client was runned. The only thing that you can do with this list is to delete any content from there using the button labeled "Local Delete".
+    c. The "Server Files" list displays the content of folder "Files" from where the server is running. On this list you can perform several actions:
+          i) Selecting one of the files in the list and clicking on the button labeled "Download" will make a copy of that file locally.
+         ii) Selecting one of the files in the list and clicking on the button labeled "Edit" or simply just double clicking it, will display a text editor in which you can change that file. To test the collaborative editing function multiple clients should open the same file.
+        iii) Selecting one of the files in the list and clicking on the button labeled "Server Delete" will remove the selected file from the server. If multiple clients are opened to view the change on others you have to click on the button labeled "Server Files" to refresh the list. On multiple clients if you try to edit a file that was deleted by another client unexpected behaviour may occur.
+    d. The text box and it's associated button labeled "New File". Entering some text in that box and then clicking on the button labeled "New File" will create a file with that name on the server.

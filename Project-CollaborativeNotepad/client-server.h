@@ -28,8 +28,7 @@ int writeEvent(int socket_descriptor, textBoxEvent *event){
 }
 
 int readEvent(int socket_descriptor, textBoxEvent **event){
-    read(socket_descriptor, *event, sizeof(textBoxEvent));
-    return 0;
+    return(!read(socket_descriptor, *event, sizeof(textBoxEvent)));
 }
 
 int sendNullEvent(int socket_descriptor, int val = 0){
@@ -43,8 +42,7 @@ int sendNullEvent(int socket_descriptor, int val = 0){
     null_event.count = val;
     null_event.unicode = val;
     null_event.cursor = val;
-    write(socket_descriptor, &null_event, sizeof(textBoxEvent));
-    return 1;
+    return(write(socket_descriptor, &null_event, sizeof(textBoxEvent)));
 }
 
 int connectToServer(char *ip_address = (char *) IP_ADDRESS, int port = PORT){
