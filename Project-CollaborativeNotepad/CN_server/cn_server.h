@@ -75,17 +75,17 @@ public:
     int *getAssociateUsers(const int current_client_number){
         int *users = (int *) malloc(client_number * sizeof(int));
         int index = 0;
-        printf("Clientii lui %d: ", current_client_number);
+        //printf("Clients of %d: ", current_client_number);
         for(int i=0; i<max_clients && index<client_number-1; i++){
             if(client_sd[i] != client_sd[current_client_number] && files_editing[i] != NULL &&
                !strcmp(files_editing[i], files_editing[current_client_number])){
-                printf("%d ", i);
+                //printf("%d ", i);
                 users[++index] = client_sd[i];
                 loop_error[i] = true;
             }
         }
         users[0] = index;
-        printf("\nClient_number: %d     \n", client_number);
+        //printf("\nClient_number: %d     \n", client_number);
         return users;
     };
 
